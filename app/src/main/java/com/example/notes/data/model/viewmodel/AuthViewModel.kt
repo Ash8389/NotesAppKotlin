@@ -16,6 +16,7 @@ sealed class AuthState {
     object Authenticated : AuthState()
     object Unauthenticated : AuthState()
     object PasswordResetEmailSent : AuthState()
+    object PasswordUpdated : AuthState()
     data class Error(val message: String) : AuthState()
 }
 
@@ -104,9 +105,21 @@ class AuthViewModel @Inject constructor(
             _authState.value = AuthState.Loading
             val result = authRepository.updatePassword(password)
             result.onSuccess {
-                _authState.value = AuthState.Authenticated
+                _authState.value = AuthState.PasswordUpdated
             }.onFailure {
                 _authState.value = AuthState.Error(it.message ?: "Failed to update password")
+            }
+        }
+    }
+
+    fun handlePasswordResetLink(fragment: String) {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            val result = authRepository.handlePasswordResetLink(fragment)
+            result.onSuccess {
+                _authState.value = AuthState.Authenticated
+            }.onFailure {
+                _authState.value = AuthState.Error(it.message ?: "Invalid reset link")
             }
         }
     }

@@ -49,9 +49,10 @@ fun ResetPasswordScreen(
     val context = LocalContext.current
 
     LaunchedEffect(authState) {
-        if (authState is AuthState.Authenticated) {
+        if (authState is AuthState.PasswordUpdated) {
             Toast.makeText(context, "Password updated successfully", Toast.LENGTH_SHORT).show()
             onPasswordResetSuccess()
+            authViewModel.resetState() // Reset state to prevent loop if we come back
         } else if (authState is AuthState.Error) {
             Toast.makeText(context, (authState as AuthState.Error).message, Toast.LENGTH_SHORT).show()
             authViewModel.resetState()

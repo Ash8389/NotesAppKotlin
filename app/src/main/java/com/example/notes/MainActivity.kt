@@ -43,6 +43,7 @@ import com.example.notes.widget.share
 import dagger.hilt.android.AndroidEntryPoint
 import kotlin.math.max
 import kotlin.math.min
+import androidx.navigation.compose.currentBackStackEntryAsState
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -125,17 +126,21 @@ fun ChangeScreen(
     var showHomeScreenBottomBar = rememberSaveable { mutableStateOf(false) }
     var showToaster = rememberSaveable { mutableStateOf(false) }
     var showColorOptions = rememberSaveable { mutableStateOf(false) }
-    var showResetPassword = rememberSaveable { mutableStateOf(false) }
-
     val context = LocalContext.current
     val activity = context as? ComponentActivity
+    val intent = activity?.intent
+    val data = intent?.data
+    val isDeepLink = data != null && data.scheme == "notesapp" && data.host == "auth" && data.path == "/callback"
 
-    // Check for deep link on composition
+    var showResetPassword = rememberSaveable { mutableStateOf(isDeepLink) }
+
+    // Handle deep link logic
     LaunchedEffect(Unit) {
-        val intent = activity?.intent
-        val data = intent?.data
-        if (data != null && data.scheme == "notesapp" && data.host == "auth" && data.path == "/callback") {
-             showResetPassword.value = true
+        if (isDeepLink) {
+             val fragment = data?.fragment
+             if (fragment != null) {
+                 authViewModel.handlePasswordResetLink(fragment)
+             }
         }
     }
 
@@ -152,13 +157,18 @@ fun ChangeScreen(
         ScreenName.LoginScreen.name
     }
 
+// ... inside ChangeScreen ...
+
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
     Scaffold(
         topBar = {
             // Only show AppBar on Home, Detail, and Input screens
-            val currentRoute = navController.currentBackStackEntry?.destination?.route
             if (currentRoute != ScreenName.LoginScreen.name && 
                 currentRoute != ScreenName.SignupScreen.name && 
-                currentRoute != ScreenName.ResetPasswordScreen.name) {
+                currentRoute != ScreenName.ResetPasswordScreen.name &&
+                currentRoute != null) {
                 AppBar(
                     navController = navController,
                     selectedNotes = selectedNote.value.size,
@@ -191,10 +201,10 @@ fun ChangeScreen(
             }
         },
         bottomBar = {
-            val currentRoute = navController.currentBackStackEntry?.destination?.route
             if (currentRoute != ScreenName.LoginScreen.name && 
                 currentRoute != ScreenName.SignupScreen.name && 
-                currentRoute != ScreenName.ResetPasswordScreen.name) {
+                currentRoute != ScreenName.ResetPasswordScreen.name &&
+                currentRoute != null) {
                 val context = LocalContext.current
                 val pinned = pinned(selectedNote.value)
                 AnimatedVisibility(
@@ -351,7 +361,7 @@ fun ChangeScreen(
                 }
                 else{
                     val newNote = NotesDataModel()
-                    InputScreen(
+                    NotesDetailScreen(
                         modifier = modifier.padding(innerPadding),
                         title = title.value,
                         description = description.value,

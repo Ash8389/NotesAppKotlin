@@ -309,16 +309,17 @@ fun ColorCards() {
 fun ColorCard(appColor: ColorOption) {
     Card(
         modifier = Modifier
-            .padding(8.dp),
+            .padding(8.dp)
+            .size(50.dp),
         colors = CardDefaults.cardColors(
             containerColor = appColor.hex
         )
     ) {
-        Text(
-            text = appColor.name,
-            modifier = Modifier.padding(16.dp),
-            color = Color.White
-        )
+//        Text(
+//            text = appColor.name,
+//            modifier = Modifier.padding(16.dp),
+//            color = Color.White
+//        )
     }
 }
 

@@ -115,13 +115,23 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.5.2")
 
     // Supabase
-    implementation("io.github.jan-tennert.supabase:supabase-kt:2.4.1")
-    implementation("io.github.jan-tennert.supabase:gotrue-kt:2.4.1")
-    implementation("io.github.jan-tennert.supabase:postgrest-kt:2.4.1")
-    implementation("io.github.jan-tennert.supabase:storage-kt:2.4.1")
+    implementation("io.github.jan-tennert.supabase:supabase-kt:2.3.1")
+    implementation("io.github.jan-tennert.supabase:gotrue-kt:2.3.1")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt:2.3.1")
+    implementation("io.github.jan-tennert.supabase:storage-kt:2.3.1")
 
     // Ktor engine
     implementation("io.ktor:ktor-client-okhttp:2.3.5")
+
+    // Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+}
+
+configurations.all {
+    resolutionStrategy {
+        force("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+        force("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.3")
+    }
 }
 
 kapt {
