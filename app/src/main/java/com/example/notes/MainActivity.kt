@@ -12,11 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.motionEventSpy
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -24,10 +25,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.notes.data.model.NotesDataModel
+import com.example.notes.data.model.viewmodel.AuthViewModel
+import com.example.notes.data.model.viewmodel.AuthState
 import com.example.notes.data.model.viewmodel.NotesViewModel
 import com.example.notes.screens.HomeScreen
 import com.example.notes.screens.InputScreen
+import com.example.notes.screens.LoginScreen
 import com.example.notes.screens.NotesDetailScreen
+import com.example.notes.screens.ResetPasswordScreen
+import com.example.notes.screens.SignupScreen
 import com.example.notes.ui.theme.NotesTheme
 import com.example.notes.widget.AppBar
 import com.example.notes.widget.BottomBar
@@ -48,9 +54,12 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier) {
                     var title = rememberSaveable { mutableStateOf("") }
                     var description = rememberSaveable { mutableStateOf("") }
-                    val notesVewModel:NotesViewModel by viewModels()
+                    val notesViewModel: NotesViewModel by viewModels()
+                    val authViewModel: AuthViewModel by viewModels()
+
                     ChangeScreen(
-                        notesViewModel = notesVewModel,
+                        notesViewModel = notesViewModel,
+                        authViewModel = authViewModel,
                         title = title,
                         description = description,
                         onTitleChange = { title.value = it },
@@ -63,9 +72,12 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class ScreenName {
+    LoginScreen,
+    SignupScreen,
     HomeScreen,
     DetailScreen,
-    InputScreen
+    InputScreen,
+    ResetPasswordScreen
 }
 
 fun pinned(note: List<NotesDataModel>) : Boolean{
@@ -103,47 +115,88 @@ fun ChangeScreen(
     onTitleChange: (String) -> Unit,
     onDesChange: (String) -> Unit,
     navController: NavHostController = rememberNavController(),
-    notesViewModel: NotesViewModel
-    ) {
-        val notesData = notesViewModel.notes.collectAsStateWithLifecycle().value
-        var selectedNote = rememberSaveable { mutableStateOf<List<NotesDataModel>>(emptyList()) }
-        var showHomeScreenBottomBar = rememberSaveable { mutableStateOf(false) }
-        var showToaster = rememberSaveable { mutableStateOf(false) }
-        var showColorOptions = rememberSaveable { mutableStateOf(false) }
-    
-        if(selectedNote.value.isEmpty()){
-            showHomeScreenBottomBar.value = false
+    notesViewModel: NotesViewModel,
+    authViewModel: AuthViewModel
+) {
+    val notesData = notesViewModel.notes.collectAsStateWithLifecycle().value
+    val authState by authViewModel.authState.collectAsStateWithLifecycle()
+
+    var selectedNote = rememberSaveable { mutableStateOf<List<NotesDataModel>>(emptyList()) }
+    var showHomeScreenBottomBar = rememberSaveable { mutableStateOf(false) }
+    var showToaster = rememberSaveable { mutableStateOf(false) }
+    var showColorOptions = rememberSaveable { mutableStateOf(false) }
+    var showResetPassword = rememberSaveable { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val activity = context as? ComponentActivity
+
+    // Check for deep link on composition
+    LaunchedEffect(Unit) {
+        val intent = activity?.intent
+        val data = intent?.data
+        if (data != null && data.scheme == "notesapp" && data.host == "auth" && data.path == "/callback") {
+             showResetPassword.value = true
         }
+    }
+
+    if(selectedNote.value.isEmpty()){
+        showHomeScreenBottomBar.value = false
+    }
+
+    // Determine start destination based on auth state
+    val startDestination = if (showResetPassword.value) {
+        ScreenName.ResetPasswordScreen.name
+    } else if (authState is AuthState.Authenticated) {
+        ScreenName.HomeScreen.name
+    } else {
+        ScreenName.LoginScreen.name
+    }
 
     Scaffold(
         topBar = {
-            AppBar(
-                navController = navController,
-                selectedNotes = selectedNote.value.size,
-                goBack = {
-                    if(navController.previousBackStackEntry != null) {
+            // Only show AppBar on Home, Detail, and Input screens
+            val currentRoute = navController.currentBackStackEntry?.destination?.route
+            if (currentRoute != ScreenName.LoginScreen.name && 
+                currentRoute != ScreenName.SignupScreen.name && 
+                currentRoute != ScreenName.ResetPasswordScreen.name) {
+                AppBar(
+                    navController = navController,
+                    selectedNotes = selectedNote.value.size,
+                    goBack = {
+                        if(navController.previousBackStackEntry != null) {
+                            title.value = ""
+                            description.value = ""
+                            navController.popBackStack()
+                        }else {
+                            selectedNote.value = emptyList()
+                        }
+                    },
+                    saveNote = {
+                        val currentNote = navController.previousBackStackEntry?.savedStateHandle?.get<NotesDataModel>("note") ?: NotesDataModel()
+                        saveData( notesViewModel = notesViewModel,title = title.value, description =  description.value, note = currentNote)
                         title.value = ""
                         description.value = ""
                         navController.popBackStack()
-                    }else {
-                        selectedNote.value = emptyList()
+                    },
+                    showColorToggle = {
+                        showColorOptions.value = !showColorOptions.value
+                    },
+                    onSignOut = {
+                        authViewModel.logout()
+                        navController.navigate(ScreenName.LoginScreen.name) {
+                            popUpTo(0) // Clear back stack
+                        }
                     }
-                },
-                saveNote = {
-                    val currentNote = navController.previousBackStackEntry?.savedStateHandle?.get<NotesDataModel>("note") ?: NotesDataModel()
-                    saveData( notesViewModel = notesViewModel,title = title.value, description =  description.value, note = currentNote)
-                    title.value = ""
-                    description.value = ""
-                    navController.popBackStack()
-                },
-                showColorToggle = {
-                    showColorOptions.value = !showColorOptions.value
-                }
-            )
+                )
+            }
         },
         bottomBar = {
-            val context = LocalContext.current
-            val pinned = pinned(selectedNote.value)
+            val currentRoute = navController.currentBackStackEntry?.destination?.route
+            if (currentRoute != ScreenName.LoginScreen.name && 
+                currentRoute != ScreenName.SignupScreen.name && 
+                currentRoute != ScreenName.ResetPasswordScreen.name) {
+                val context = LocalContext.current
+                val pinned = pinned(selectedNote.value)
                 AnimatedVisibility(
                     visible = (selectedNote.value.isNotEmpty() || showColorOptions.value)
                 ) {
@@ -183,9 +236,48 @@ fun ChangeScreen(
                             }
                         )
                 }
+            }
         }
     ) {innerPadding ->
-        NavHost(navController = navController, startDestination = ScreenName.HomeScreen.name){
+        NavHost(navController = navController, startDestination = startDestination){
+            composable(route = ScreenName.LoginScreen.name) {
+                LoginScreen(
+                    authViewModel = authViewModel,
+                    onLoginSuccess = {
+                        navController.navigate(ScreenName.HomeScreen.name) {
+                            popUpTo(ScreenName.LoginScreen.name) { inclusive = true }
+                        }
+                    },
+                    onNavigateToSignup = {
+                        navController.navigate(ScreenName.SignupScreen.name)
+                    }
+                )
+            }
+            composable(route = ScreenName.SignupScreen.name) {
+                SignupScreen(
+                    authViewModel = authViewModel,
+                    onSignupSuccess = {
+                        navController.navigate(ScreenName.HomeScreen.name) {
+                            popUpTo(ScreenName.SignupScreen.name) { inclusive = true }
+                            // Also remove Login from backstack if we came from there
+                            popUpTo(ScreenName.LoginScreen.name) { inclusive = true }
+                        }
+                    },
+                    onNavigateToLogin = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable(route = ScreenName.ResetPasswordScreen.name) {
+                ResetPasswordScreen(
+                    authViewModel = authViewModel,
+                    onPasswordResetSuccess = {
+                        navController.navigate(ScreenName.HomeScreen.name) {
+                            popUpTo(0)
+                        }
+                    }
+                )
+            }
             composable(route = ScreenName.HomeScreen.name) {
                 HomeScreen(
                     modifier = Modifier.padding(innerPadding),
@@ -226,43 +318,57 @@ fun ChangeScreen(
                             saveData(
                                 notesViewModel = notesViewModel,
                                 title = title.value,
-                                description = description.value, note = currentNote
+                                description = description.value,
+                                note = currentNote
                             )
-//                            newNote -> notesViewModel.addNotes(newNote)
-                            title.value = ""
-                            description.value = ""
-                            navController.popBackStack()
                         }
                     )
                 }
             }
-            composable(route = ScreenName.InputScreen.name) {
-                val newNote = NotesDataModel()
-                if(title.value == "" && description.value == "") {
-                    title.value = newNote.title
-                    description.value = newNote.description
+            composable(route = ScreenName.InputScreen.name){
+                val currentNote = navController.previousBackStackEntry?.savedStateHandle?.get<NotesDataModel>("note")
+                if(currentNote != null){
+                    if(title.value == "" && description.value == "") {
+                        title.value = currentNote.title
+                        description.value = currentNote.description
+                    }
+                    NotesDetailScreen(
+                        modifier = modifier.padding(innerPadding),
+                        title = title.value,
+                        description = description.value,
+                        onTitleChange = onTitleChange,
+                        onDesChange = onDesChange,
+                        data = currentNote,
+                        saveData = {
+                            saveData(
+                                notesViewModel = notesViewModel,
+                                title = title.value,
+                                description = description.value,
+                                note = currentNote
+                            )
+                        }
+                    )
                 }
-                InputScreen(
-                    modifier = modifier.padding(innerPadding),
-                    title = title.value,
-                    description = description.value,
-                    onTitleChange = onTitleChange,
-                    onDesChange = onDesChange,
-                    currNote = newNote,
-                    saveData = {
-                        saveData(
-                            notesViewModel = notesViewModel,
-                            title = title.value,
-                            description = description.value,
-                            note = newNote
-                        )
-                        title.value = ""
-                        description.value = ""
-                        navController.popBackStack()
-                    },
-                )
+                else{
+                    val newNote = NotesDataModel()
+                    InputScreen(
+                        modifier = modifier.padding(innerPadding),
+                        title = title.value,
+                        description = description.value,
+                        onTitleChange = onTitleChange,
+                        onDesChange = onDesChange,
+                        data = newNote,
+                        saveData = {
+                            saveData(
+                                notesViewModel = notesViewModel,
+                                title = title.value,
+                                description = description.value,
+                                note = newNote
+                            )
+                        }
+                    )
+                }
             }
         }
     }
-
 }

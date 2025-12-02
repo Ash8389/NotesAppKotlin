@@ -73,6 +73,7 @@ dependencies {
 
     // Generative AI
     implementation(libs.generativeai)
+    implementation(libs.androidx.compose.runtime)
 
     // Testing
     testImplementation(libs.junit)

@@ -26,6 +26,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
@@ -189,6 +190,7 @@ fun AppBar(
     goBack : () -> Unit,
     saveNote: () -> Unit,
     showColorToggle: () -> Unit,
+    onSignOut: () -> Unit,
     navController: NavHostController,
 ) {
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
@@ -228,6 +230,15 @@ fun AppBar(
                     modifier = Modifier
                         .size(35.dp)
                         .clickable { saveNote() }
+                )
+            } else if (selectedNotes == 0) {
+                // Show Sign Out button on Home Screen when no notes are selected
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                    contentDescription = "Sign Out",
+                    modifier = Modifier
+                        .size(35.dp)
+                        .clickable { onSignOut() }
                 )
             }
         },
