@@ -20,6 +20,10 @@ enum class SyncState { SYNCED, PENDING, DELETED }
 data class NotesDataModel(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
+    
+    @ColumnInfo(name = "user_id")
+    @SerialName("user_id")
+    val userId: String = "",
 
     @ColumnInfo(name = "note_title")
     @SerialName("note_title")

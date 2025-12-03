@@ -9,6 +9,8 @@ import javax.inject.Inject
 class SupabaseAuthRepository @Inject constructor() {
 
     private val client = SupabaseClientHolder.client
+    
+    val sessionStatus = client.auth.sessionStatus
 
     suspend fun login(email: String, password: String): Result<Unit> {
         return try {
@@ -44,6 +46,10 @@ class SupabaseAuthRepository @Inject constructor() {
     
     fun getCurrentUserEmail(): String? {
         return client.auth.currentUserOrNull()?.email
+    }
+
+    fun getCurrentUserId(): String? {
+        return client.auth.currentUserOrNull()?.id
     }
 
     suspend fun sendPasswordResetEmail(email: String): Result<Unit> {

@@ -17,7 +17,12 @@ object SupabaseClientHolder {
         supabaseKey = SUPABASE_KEY
     ) {
         install(Auth)
-        install(Postgrest)
-        install(Storage)
+    install(Postgrest) {
+        serializer = io.github.jan.supabase.serializer.KotlinXSerializer(kotlinx.serialization.json.Json {
+            ignoreUnknownKeys = true
+            coerceInputValues = true
+        })
     }
+    install(Storage)
+}
 }

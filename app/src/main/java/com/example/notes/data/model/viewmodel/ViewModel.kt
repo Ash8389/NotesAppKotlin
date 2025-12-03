@@ -18,13 +18,17 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.combine
+import com.example.notes.repository.SupabaseAuthRepository
+import io.github.jan.supabase.gotrue.SessionStatus
 import javax.inject.Inject
 
 @HiltViewModel
 class NotesViewModel @Inject constructor(
     private val repository: NoteRepository,
     private val supabaseRepo: SupabaseNotesRepository,
-    private val connectivityObserver: ConnectivityObserver // Injected
+    private val connectivityObserver: ConnectivityObserver,
+    private val authRepository: SupabaseAuthRepository
 ) : ViewModel() {
 
     private val _notes = MutableStateFlow<List<NotesDataModel>>(emptyList())
@@ -33,8 +37,18 @@ class NotesViewModel @Inject constructor(
     init {
         // Observe local database changes and filter out deleted notes for the UI
         viewModelScope.launch(Dispatchers.IO) {
-            repository.getAllNotes().distinctUntilChanged().collect { list ->
-                _notes.value = list.filter { it.syncState != SyncState.DELETED }
+            combine(
+                repository.getAllNotes().distinctUntilChanged(),
+                authRepository.sessionStatus
+            ) { notes, status ->
+                val userId = authRepository.getCurrentUserId() ?: ""
+                if (status is SessionStatus.Authenticated) {
+                    notes.filter { it.syncState != SyncState.DELETED && it.userId == userId }
+                } else {
+                    emptyList()
+                }
+            }.collect { list ->
+                _notes.value = list
                 sort()
             }
         }
@@ -102,8 +116,11 @@ class NotesViewModel @Inject constructor(
     // Add note locally, mark as pending for sync
     // ------------------------------------------------------------------
     fun addNotes(newNote: NotesDataModel) = viewModelScope.launch {
-        repository.addNote(newNote.copy(syncState = SyncState.PENDING))
-        syncPendingNotes() // Attempt to sync immediately if online
+        val userId = authRepository.getCurrentUserId() ?: ""
+        if (userId.isNotEmpty()) {
+            repository.addNote(newNote.copy(syncState = SyncState.PENDING, userId = userId))
+            syncPendingNotes() // Attempt to sync immediately if online
+        }
     }
 
     // ------------------------------------------------------------------
