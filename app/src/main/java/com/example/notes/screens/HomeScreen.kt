@@ -84,6 +84,7 @@ fun NotesList(
                         date = date,
                         totalSelected = totalSelected,
                         isPinned = item.isPinned,
+                        colorIndex = item.colorIndex,
                         goToDetailScreen = { goToDetailScreen(item) },
                         cardSelected = { cardSelected(item) },
                     )

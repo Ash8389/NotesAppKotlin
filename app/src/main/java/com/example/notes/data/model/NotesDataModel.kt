@@ -43,6 +43,11 @@ data class NotesDataModel(
 
     @ColumnInfo(name = "note_sync_state")
     @Transient
-    val syncState: SyncState = SyncState.PENDING
+    val syncState: SyncState = SyncState.PENDING,
+
+    @ColumnInfo(name = "note_color")
+    @SerialName("note_color")
+    @Transient
+    val colorIndex: Int = 0
 
 ) : Parcelable
