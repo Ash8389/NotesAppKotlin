@@ -305,7 +305,6 @@ enum class ColorOption(val lightColor: Color, val darkColor: Color) {
 
 @Composable
 fun ColorCards(onColorSelected: (Int) -> Unit) {
-
     BottomAppBar (
         modifier = Modifier.height(80.dp),
         actions = {
