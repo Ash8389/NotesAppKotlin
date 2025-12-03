@@ -12,11 +12,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.motionEventSpy
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -74,17 +74,17 @@ fun pinned(note: List<NotesDataModel>) : Boolean{
     return false
 }
 
-fun saveData(notesViewModel: NotesViewModel, title: String, description: String, note: NotesDataModel) {
+fun saveData(notesViewModel: NotesViewModel, title: String, description: String, note: NotesDataModel, colorIndex: Int) {
     if(title == "" && description == "")
         return;
     if(title == "" || description == "") {
         if(title == ""){
-            notesViewModel.addNotes(note.copy(title = description.substring(0, max(1, min(5, description.length))), description = description, date = note.date))
+            notesViewModel.addNotes(note.copy(title = description.substring(0, max(1, min(5, description.length))), description = description, date = note.date, colorIndex = colorIndex))
         }else{
-            notesViewModel.addNotes(note.copy(title = title, description = description, date = note.date))
+            notesViewModel.addNotes(note.copy(title = title, description = description, date = note.date, colorIndex = colorIndex))
         }
     }else {
-        notesViewModel.addNotes(note.copy(title = title, description = description, date = note.date))
+        notesViewModel.addNotes(note.copy(title = title, description = description, date = note.date, colorIndex = colorIndex))
     }
 }
 
@@ -110,7 +110,8 @@ fun ChangeScreen(
         var showHomeScreenBottomBar = rememberSaveable { mutableStateOf(false) }
         var showToaster = rememberSaveable { mutableStateOf(false) }
         var showColorOptions = rememberSaveable { mutableStateOf(false) }
-    
+        var colorIndex = rememberSaveable { mutableStateOf(0) }
+
         if(selectedNote.value.isEmpty()){
             showHomeScreenBottomBar.value = false
         }
@@ -122,18 +123,27 @@ fun ChangeScreen(
                 selectedNotes = selectedNote.value.size,
                 goBack = {
                     if(navController.previousBackStackEntry != null) {
+                        navController.previousBackStackEntry?.savedStateHandle?.remove<NotesDataModel>("note")
                         title.value = ""
                         description.value = ""
+                        showColorOptions.value = false
                         navController.popBackStack()
                     }else {
                         selectedNote.value = emptyList()
                     }
                 },
                 saveNote = {
-                    val currentNote = navController.previousBackStackEntry?.savedStateHandle?.get<NotesDataModel>("note") ?: NotesDataModel()
-                    saveData( notesViewModel = notesViewModel,title = title.value, description =  description.value, note = currentNote)
+                    val currentRoute = navController.currentDestination?.route
+                    val currentNote = if (currentRoute == ScreenName.DetailScreen.name) {
+                        navController.previousBackStackEntry?.savedStateHandle?.get<NotesDataModel>("note") ?: NotesDataModel()
+                    } else {
+                        NotesDataModel()
+                    }
+                    saveData( notesViewModel = notesViewModel,title = title.value, description =  description.value, note = currentNote, colorIndex = colorIndex.value)
+                    navController.previousBackStackEntry?.savedStateHandle?.remove<NotesDataModel>("note")
                     title.value = ""
                     description.value = ""
+                    showColorOptions.value = false
                     navController.popBackStack()
                 },
                 showColorToggle = {
@@ -166,9 +176,19 @@ fun ChangeScreen(
                         )
                     }
                     if(showColorOptions.value)
-                        ColorCards()
+                        ColorCards(onColorSelected = { selectedColorIndex ->
+                            if (selectedNote.value.isNotEmpty()) {
+                                // Update multiple notes
+                                notesViewModel.updateNotesColor(selectedNote.value, selectedColorIndex)
+                                selectedNote.value = emptyList()
+                                showColorOptions.value = false
+                            } else {
+                                // Update current editing note state
+                                colorIndex.value = selectedColorIndex
+                            }
+                        })
 
-                    else if(!showHomeScreenBottomBar.value)
+                    else if(!showHomeScreenBottomBar.value && selectedNote.value.isNotEmpty())
                         BottomBar(
                             pinned = pinned,
                             delete = {
@@ -211,9 +231,12 @@ fun ChangeScreen(
             composable(route = ScreenName.DetailScreen.name){
                 val currentNote = navController.previousBackStackEntry?.savedStateHandle?.get<NotesDataModel>("note")
                 if(currentNote != null){
-                    if(title.value == "" && description.value == "") {
-                        title.value = currentNote.title
-                        description.value = currentNote.description
+                    LaunchedEffect(Unit) {
+                        if(title.value == "" && description.value == "") {
+                            title.value = currentNote.title
+                            description.value = currentNote.description
+                            colorIndex.value = currentNote.colorIndex
+                        }
                     }
                     NotesDetailScreen(
                         modifier = modifier.padding(innerPadding),
@@ -222,15 +245,20 @@ fun ChangeScreen(
                         onTitleChange = onTitleChange,
                         onDesChange = onDesChange,
                         data = currentNote,
+                        colorIndex = colorIndex.value,
                         saveData = {
                             saveData(
                                 notesViewModel = notesViewModel,
                                 title = title.value,
-                                description = description.value, note = currentNote
+                                description = description.value,
+                                note = currentNote,
+                                colorIndex = colorIndex.value
                             )
 //                            newNote -> notesViewModel.addNotes(newNote)
+                            navController.previousBackStackEntry?.savedStateHandle?.remove<NotesDataModel>("note")
                             title.value = ""
                             description.value = ""
+                            showColorOptions.value = false
                             navController.popBackStack()
                         }
                     )
@@ -238,9 +266,12 @@ fun ChangeScreen(
             }
             composable(route = ScreenName.InputScreen.name) {
                 val newNote = NotesDataModel()
-                if(title.value == "" && description.value == "") {
-                    title.value = newNote.title
-                    description.value = newNote.description
+                LaunchedEffect(Unit) {
+                    if(title.value == "" && description.value == "") {
+                        title.value = newNote.title
+                        description.value = newNote.description
+                        colorIndex.value = newNote.colorIndex
+                    }
                 }
                 InputScreen(
                     modifier = modifier.padding(innerPadding),
@@ -249,15 +280,18 @@ fun ChangeScreen(
                     onTitleChange = onTitleChange,
                     onDesChange = onDesChange,
                     currNote = newNote,
+                    colorIndex = colorIndex.value,
                     saveData = {
                         saveData(
                             notesViewModel = notesViewModel,
                             title = title.value,
                             description = description.value,
-                            note = newNote
+                            note = newNote,
+                            colorIndex = colorIndex.value
                         )
                         title.value = ""
                         description.value = ""
+                        showColorOptions.value = false
                         navController.popBackStack()
                     },
                 )

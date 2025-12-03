@@ -10,7 +10,7 @@ import com.example.notes.converter.SyncStateConverter
 
 @Database(
     entities = [NotesDataModel::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(

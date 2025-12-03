@@ -1,5 +1,6 @@
 package com.example.notes.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,12 +30,16 @@ fun InputScreen(
     onTitleChange : (String) -> Unit,
     onDesChange : (String) -> Unit,
     currNote: NotesDataModel,
+    colorIndex: Int = 0,
     saveData : () -> Unit,
 ) {
     val date : String = SimpleDateFormat("dd/MM/YYYY HH:mm").format(currNote?.date)
+    val colorOption = com.example.notes.widget.ColorOption.values().getOrElse(colorIndex) { com.example.notes.widget.ColorOption.Default }
+    val isDefault = colorIndex == 0
+    val backgroundColor = if (isDefault) androidx.compose.material3.MaterialTheme.colorScheme.background else colorOption.darkColor
+    val textColor = if (isDefault) androidx.compose.material3.MaterialTheme.colorScheme.onBackground else androidx.compose.ui.graphics.Color.White
 
-
-    Column(modifier = modifier) {
+    Column(modifier = modifier.background(backgroundColor)) {
         GetInput(value = title, onValueChange = onTitleChange,
             placeholder = "Title",
             fontWeight = FontWeight.Bold,
@@ -44,14 +49,17 @@ fun InputScreen(
                 imeAction = ImeAction.Next,
             ),
             saveData = {},
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            textColor = textColor
         )
 
         Text(
             text = "$date  |  ${description.length} characters",
             fontWeight = FontWeight.W400,
             fontSize = 13.sp,
-            modifier = Modifier.padding(start = 15.dp, bottom = 5.dp, top = 0.dp)
+
+            modifier = Modifier.padding(start = 15.dp, bottom = 5.dp, top = 0.dp),
+            color = textColor
         )
 
         GetInput(value = description, onValueChange = onDesChange,
@@ -63,7 +71,8 @@ fun InputScreen(
                 imeAction = ImeAction.Default,
             ),
             saveData = { saveData() },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            textColor = textColor
         )
 
 

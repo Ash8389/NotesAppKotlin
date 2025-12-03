@@ -12,6 +12,7 @@ fun NotesDetailScreen(
     onTitleChange: (String) -> Unit,
     onDesChange: (String) -> Unit,
     data: NotesDataModel,
+    colorIndex: Int = 0,
     saveData: () -> Unit,
 ) {
 
@@ -22,6 +23,7 @@ fun NotesDetailScreen(
         onTitleChange = onTitleChange,
         onDesChange = onDesChange,
         currNote = data,
+        colorIndex = colorIndex,
         saveData = { saveData() },
     )
 

@@ -81,6 +81,7 @@ fun NoteCard(
     date: String,
     totalSelected : Int,
     isPinned: Boolean,
+    colorIndex: Int = 0,
     goToDetailScreen : () -> Unit,
     cardSelected : () -> Unit,
 ) {
@@ -88,6 +89,12 @@ fun NoteCard(
     if(totalSelected == 0) {
         marked.value = false
     }
+    val colorOption = ColorOption.values().getOrElse(colorIndex) { ColorOption.Default }
+    val isSystemInDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
+    val isDefault = colorIndex == 0
+    val cardColor = if (isDefault) MaterialTheme.colorScheme.primaryContainer else colorOption.darkColor
+    val textColor = if (isDefault) MaterialTheme.colorScheme.onSurface else Color.White
+
     Card(
         modifier = Modifier
             .width(200.dp)
@@ -107,8 +114,7 @@ fun NoteCard(
                 }
             ),
         shape = RoundedCornerShape(topEnd = 15.dp, bottomStart = 15.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-//        colors = CardDefaults.cardColors(containerColor )
+        colors = CardDefaults.cardColors(containerColor = cardColor)
     ) {
         Box( modifier = Modifier.fillMaxSize()) {
             Surface(
@@ -127,21 +133,27 @@ fun NoteCard(
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
                         maxLines = 1,
+
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(start = 5.dp, bottom = 2.5.dp, top = 5.dp)
+                        modifier = Modifier.padding(start = 5.dp, bottom = 2.5.dp, top = 5.dp),
+                        color = textColor
                     )
                     Text(
                         text = description,
                         maxLines = 4,
+
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(start = 5.dp, bottom = 2.5.dp, top = 2.5.dp)
+                        modifier = Modifier.padding(start = 5.dp, bottom = 2.5.dp, top = 2.5.dp),
+                        color = textColor
                     )
                     Row {
                         Text(
                             text = date,
                             fontWeight = FontWeight.W400,
+
                             fontSize = 13.sp,
-                            modifier = Modifier.padding(start = 5.dp, bottom = 5.dp, top = 2.5.dp)
+                            modifier = Modifier.padding(start = 5.dp, bottom = 5.dp, top = 2.5.dp),
+                            color = textColor
                         )
                         if(isPinned) {
                             Icon(
@@ -244,7 +256,8 @@ fun GetInput(
     placeholder: String,
     keyboardOptions: KeyboardOptions,
     fontWeight: FontWeight,
-    fontSize: Int
+    fontSize: Int,
+    textColor: Color = Color.Unspecified
 ) {
 
     TextField(
@@ -267,27 +280,41 @@ fun GetInput(
             focusedContainerColor = Color.Transparent,
             unfocusedContainerColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
-            focusedIndicatorColor = Color.Transparent
+            focusedIndicatorColor = Color.Transparent,
+            focusedTextColor = textColor,
+            unfocusedTextColor = textColor,
+            focusedPlaceholderColor = textColor.copy(alpha = 0.7f),
+            unfocusedPlaceholderColor = textColor.copy(alpha = 0.7f)
         )
     )
 }
 
-enum class ColorOption(val hex: Color) {
-    Red(Color.Red),
-    Blue(Color.Blue),
-    Green(Color.Green),
-    Yellow(Color.Yellow)
+enum class ColorOption(val lightColor: Color, val darkColor: Color) {
+    Default(Color(0xFF1E293B), Color(0xFF1E293B)), // Slate 100 / 800
+    Red(Color(0xFFFEE2E2), Color(0xFF7F1D1D)),     // Red 100 / 900
+    Orange(Color(0xFFFFE4E6), Color(0xFF881337)),  // Rose 100 / 900 (using Rose for Orange slot as it's nicer)
+    Yellow(Color(0xFFFEF9C3), Color(0xFF713F12)),  // Yellow 100 / 900
+    Green(Color(0xFFDCFCE7), Color(0xFF14532D)),   // Green 100 / 900
+    Teal(Color(0xFFCCFBF1), Color(0xFF134E4A)),    // Teal 100 / 900
+    Blue(Color(0xFFDBEAFE), Color(0xFF1E3A8A)),    // Blue 100 / 900
+    Purple(Color(0xFFF3E8FF), Color(0xFF581C87)),  // Purple 100 / 900
+    Pink(Color(0xFFFCE7F3), Color(0xFF831843)),    // Pink 100 / 900
+    Brown(Color(0xFFEFEBE9), Color(0xFF3E2723)),   // Brown 50 / 900
+    Gray(Color(0xFFE5E7EB), Color(0xFF374151))     // Gray 200 / 700
 }
 
 @Composable
-fun ColorCards() {
+fun ColorCards(onColorSelected: (Int) -> Unit) {
 
     BottomAppBar (
         modifier = Modifier.height(80.dp),
         actions = {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                ColorOption.values().forEach { colorItem ->
-                    ColorCard(colorItem)
+            androidx.compose.foundation.lazy.LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                items(ColorOption.values().size) { index ->
+                    ColorCard(ColorOption.values()[index], onClick = { onColorSelected(index) })
                 }
             }
         }
@@ -295,19 +322,20 @@ fun ColorCards() {
 }
 
 @Composable
-fun ColorCard(appColor: ColorOption) {
+fun ColorCard(appColor: ColorOption, onClick: () -> Unit) {
+    val isSystemInDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
+    val cardColor = if(appColor == ColorOption.Default) MaterialTheme.colorScheme.background else appColor.darkColor
     Card(
         modifier = Modifier
-            .padding(8.dp),
+            .padding(8.dp)
+            .size(50.dp)
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(
-            containerColor = appColor.hex
-        )
+            containerColor = cardColor
+        ),
+        shape = CircleShape
     ) {
-        Text(
-            text = appColor.name,
-            modifier = Modifier.padding(16.dp),
-            color = Color.White
-        )
+        // Empty content for color circle
     }
 }
 

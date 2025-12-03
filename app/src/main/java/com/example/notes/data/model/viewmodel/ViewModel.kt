@@ -132,4 +132,11 @@ class NotesViewModel @Inject constructor(
             updateNotes(updated)
         }
     }
+
+    fun updateNotesColor(noteList: List<NotesDataModel>, colorIndex: Int) = viewModelScope.launch {
+        noteList.forEach { note ->
+            val updated = note.copy(colorIndex = colorIndex)
+            updateNotes(updated)
+        }
+    }
 }

@@ -4,6 +4,7 @@ import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.Auth
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.serializer.KotlinXSerializer
 import io.github.jan.supabase.storage.Storage
 
 object SupabaseClientHolder {
@@ -17,7 +18,11 @@ object SupabaseClientHolder {
         supabaseKey = SUPABASE_KEY
     ) {
         install(Auth)
-        install(Postgrest)
+        install(Postgrest) {
+            serializer = KotlinXSerializer(kotlinx.serialization.json.Json {
+                ignoreUnknownKeys = true
+            })
+        }
         install(Storage)
     }
 }
