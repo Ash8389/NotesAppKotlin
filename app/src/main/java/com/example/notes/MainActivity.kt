@@ -29,7 +29,6 @@ import com.example.notes.data.model.viewmodel.AuthViewModel
 import com.example.notes.data.model.viewmodel.AuthState
 import com.example.notes.data.model.viewmodel.NotesViewModel
 import com.example.notes.screens.HomeScreen
-import com.example.notes.screens.InputScreen
 import com.example.notes.screens.LoginScreen
 import com.example.notes.screens.NotesDetailScreen
 import com.example.notes.screens.ResetPasswordScreen
