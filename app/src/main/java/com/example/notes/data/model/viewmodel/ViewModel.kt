@@ -64,6 +64,15 @@ class NotesViewModel @Inject constructor(
                 }
             }
             .launchIn(viewModelScope)
+
+        // Trigger sync when user logs in
+        viewModelScope.launch {
+            authRepository.sessionStatus.collect { status ->
+                if (status is SessionStatus.Authenticated) {
+                    syncNotes()
+                }
+            }
+        }
     }
 
     // Sync pending inserts, updates, and deletes
@@ -98,9 +107,13 @@ class NotesViewModel @Inject constructor(
         try {
             val remoteNotes = supabaseRepo.fetchNotesFromSupabase()
             val localNotes = repository.getAllNotes().first()
-            val localIds = localNotes.map { it.id }.toSet()
+            val localNotesMap = localNotes.associateBy { it.id }
+            
             remoteNotes.forEach { remoteNote ->
-                if (remoteNote.id !in localIds) {
+                val localNote = localNotesMap[remoteNote.id]
+                if (localNote == null) {
+                    repository.addNote(remoteNote.copy(syncState = SyncState.SYNCED))
+                } else if (localNote.syncState == SyncState.SYNCED) {
                     repository.addNote(remoteNote.copy(syncState = SyncState.SYNCED))
                 }
             }

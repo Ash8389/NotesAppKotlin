@@ -47,7 +47,6 @@ data class NotesDataModel(
 
     @ColumnInfo(name = "note_color")
     @SerialName("note_color")
-    @Transient
     val colorIndex: Int = 0
 
 ) : Parcelable

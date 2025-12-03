@@ -34,6 +34,7 @@ import com.example.notes.screens.LoginScreen
 import com.example.notes.screens.NotesDetailScreen
 import com.example.notes.screens.ResetPasswordScreen
 import com.example.notes.screens.SignupScreen
+import com.example.notes.screens.InputScreen
 import com.example.notes.ui.theme.NotesTheme
 import com.example.notes.widget.AppBar
 import com.example.notes.widget.BottomBar
@@ -126,25 +127,27 @@ fun ChangeScreen(
     var showHomeScreenBottomBar = rememberSaveable { mutableStateOf(false) }
     var showToaster = rememberSaveable { mutableStateOf(false) }
     var showColorOptions = rememberSaveable { mutableStateOf(false) }
+    var colorIndex = rememberSaveable { mutableStateOf(0) }
     val context = LocalContext.current
     val activity = context as? ComponentActivity
     val intent = activity?.intent
     val data = intent?.data
-    val isDeepLink = data != null && data.scheme == "notesapp" && data.host == "auth" && data.path == "/callback"
+    val isDeepLink =
+        data != null && data.scheme == "notesapp" && data.host == "auth" && data.path == "/callback"
 
     var showResetPassword = rememberSaveable { mutableStateOf(isDeepLink) }
 
     // Handle deep link logic
     LaunchedEffect(Unit) {
         if (isDeepLink) {
-             val fragment = data?.fragment
-             if (fragment != null) {
-                 authViewModel.handlePasswordResetLink(fragment)
-             }
+            val fragment = data?.fragment
+            if (fragment != null) {
+                authViewModel.handlePasswordResetLink(fragment)
+            }
         }
     }
 
-    if(selectedNote.value.isEmpty()){
+    if (selectedNote.value.isEmpty()) {
         showHomeScreenBottomBar.value = false
     }
 
@@ -162,28 +165,45 @@ fun ChangeScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Reset color options when navigating to Home Screen
+    LaunchedEffect(currentRoute) {
+        if (currentRoute == ScreenName.HomeScreen.name) {
+            showColorOptions.value = false
+        }
+    }
+
     Scaffold(
         topBar = {
             // Only show AppBar on Home, Detail, and Input screens
-            if (currentRoute != ScreenName.LoginScreen.name && 
-                currentRoute != ScreenName.SignupScreen.name && 
+            if (currentRoute != ScreenName.LoginScreen.name &&
+                currentRoute != ScreenName.SignupScreen.name &&
                 currentRoute != ScreenName.ResetPasswordScreen.name &&
-                currentRoute != null) {
+                currentRoute != null
+            ) {
                 AppBar(
                     navController = navController,
                     selectedNotes = selectedNote.value.size,
                     goBack = {
-                        if(navController.previousBackStackEntry != null) {
+                        if (navController.previousBackStackEntry != null) {
                             title.value = ""
                             description.value = ""
                             navController.popBackStack()
-                        }else {
+                        } else {
                             selectedNote.value = emptyList()
                         }
                     },
                     saveNote = {
-                        val currentNote = navController.previousBackStackEntry?.savedStateHandle?.get<NotesDataModel>("note") ?: NotesDataModel()
-                        saveData( notesViewModel = notesViewModel,title = title.value, description =  description.value, note = currentNote)
+                        val currentNote =
+                            navController.previousBackStackEntry?.savedStateHandle?.get<NotesDataModel>(
+                                "note"
+                            ) ?: NotesDataModel()
+                        saveData(
+                            notesViewModel = notesViewModel,
+                            title = title.value,
+                            description = description.value,
+                            note = currentNote,
+                            colorIndex = colorIndex.value
+                        )
                         title.value = ""
                         description.value = ""
                         navController.popBackStack()
@@ -201,20 +221,21 @@ fun ChangeScreen(
             }
         },
         bottomBar = {
-            if (currentRoute != ScreenName.LoginScreen.name && 
-                currentRoute != ScreenName.SignupScreen.name && 
+            if (currentRoute != ScreenName.LoginScreen.name &&
+                currentRoute != ScreenName.SignupScreen.name &&
                 currentRoute != ScreenName.ResetPasswordScreen.name &&
-                currentRoute != null) {
+                currentRoute != null
+            ) {
                 val context = LocalContext.current
                 val pinned = pinned(selectedNote.value)
                 AnimatedVisibility(
                     visible = (selectedNote.value.isNotEmpty() || showColorOptions.value)
                 ) {
-                    if(showToaster.value){
+                    if (showToaster.value) {
                         Toaster(message = "Deleted")
                         showToaster.value = false
                     }
-                    if(showHomeScreenBottomBar.value){
+                    if (showHomeScreenBottomBar.value) {
                         DeletePopUp(
                             totalSelected = selectedNote.value.size,
                             delete = {
@@ -228,11 +249,14 @@ fun ChangeScreen(
                             }
                         )
                     }
-                    if(showColorOptions.value)
+                    if (showColorOptions.value)
                         ColorCards(onColorSelected = { selectedColorIndex ->
                             if (selectedNote.value.isNotEmpty()) {
                                 // Update multiple notes
-                                notesViewModel.updateNotesColor(selectedNote.value, selectedColorIndex)
+                                notesViewModel.updateNotesColor(
+                                    selectedNote.value,
+                                    selectedColorIndex
+                                )
                                 selectedNote.value = emptyList()
                                 showColorOptions.value = false
                             } else {
@@ -240,8 +264,7 @@ fun ChangeScreen(
                                 colorIndex.value = selectedColorIndex
                             }
                         })
-
-                    else if(!showHomeScreenBottomBar.value && selectedNote.value.isNotEmpty())
+                    else if (!showHomeScreenBottomBar.value && selectedNote.value.isNotEmpty())
                         BottomBar(
                             pinned = pinned,
                             delete = {
@@ -258,8 +281,8 @@ fun ChangeScreen(
                 }
             }
         }
-    ) {innerPadding ->
-        NavHost(navController = navController, startDestination = startDestination){
+    ) { innerPadding ->
+        NavHost(navController = navController, startDestination = startDestination) {
             composable(route = ScreenName.LoginScreen.name) {
                 LoginScreen(
                     authViewModel = authViewModel,
@@ -313,18 +336,19 @@ fun ChangeScreen(
                     },
                     cardSelected = {
                         val isContain = selectedNote.value.contains(it)
-                        if(isContain)
+                        if (isContain)
                             selectedNote.value -= it;
                         else
                             selectedNote.value += it;
                     },
                 )
             }
-            composable(route = ScreenName.DetailScreen.name){
-                val currentNote = navController.previousBackStackEntry?.savedStateHandle?.get<NotesDataModel>("note")
-                if(currentNote != null){
+            composable(route = ScreenName.DetailScreen.name) {
+                val currentNote =
+                    navController.previousBackStackEntry?.savedStateHandle?.get<NotesDataModel>("note")
+                if (currentNote != null) {
                     LaunchedEffect(Unit) {
-                        if(title.value == "" && description.value == "") {
+                        if (title.value == "" && description.value == "") {
                             title.value = currentNote.title
                             description.value = currentNote.description
                             colorIndex.value = currentNote.colorIndex
@@ -345,11 +369,11 @@ fun ChangeScreen(
                                 description = description.value,
                                 note = currentNote,
                                 colorIndex = colorIndex.value
-                                description = description.value,
-                                note = currentNote
                             )
 //                            newNote -> notesViewModel.addNotes(newNote)
-                            navController.previousBackStackEntry?.savedStateHandle?.remove<NotesDataModel>("note")
+                            navController.previousBackStackEntry?.savedStateHandle?.remove<NotesDataModel>(
+                                "note"
+                            )
                             title.value = ""
                             description.value = ""
                             showColorOptions.value = false
@@ -361,7 +385,7 @@ fun ChangeScreen(
             composable(route = ScreenName.InputScreen.name) {
                 val newNote = NotesDataModel()
                 LaunchedEffect(Unit) {
-                    if(title.value == "" && description.value == "") {
+                    if (title.value == "" && description.value == "") {
                         title.value = newNote.title
                         description.value = newNote.description
                         colorIndex.value = newNote.colorIndex
@@ -389,49 +413,7 @@ fun ChangeScreen(
                         navController.popBackStack()
                     },
                 )
-            composable(route = ScreenName.InputScreen.name){
-                val currentNote = navController.previousBackStackEntry?.savedStateHandle?.get<NotesDataModel>("note")
-                if(currentNote != null){
-                    if(title.value == "" && description.value == "") {
-                        title.value = currentNote.title
-                        description.value = currentNote.description
-                    }
-                    NotesDetailScreen(
-                        modifier = modifier.padding(innerPadding),
-                        title = title.value,
-                        description = description.value,
-                        onTitleChange = onTitleChange,
-                        onDesChange = onDesChange,
-                        data = currentNote,
-                        saveData = {
-                            saveData(
-                                notesViewModel = notesViewModel,
-                                title = title.value,
-                                description = description.value,
-                                note = currentNote
-                            )
-                        }
-                    )
-                }
-                else{
-                    val newNote = NotesDataModel()
-                    NotesDetailScreen(
-                        modifier = modifier.padding(innerPadding),
-                        title = title.value,
-                        description = description.value,
-                        onTitleChange = onTitleChange,
-                        onDesChange = onDesChange,
-                        data = newNote,
-                        saveData = {
-                            saveData(
-                                notesViewModel = notesViewModel,
-                                title = title.value,
-                                description = description.value,
-                                note = newNote
-                            )
-                        }
-                    )
-                }
+
             }
         }
     }

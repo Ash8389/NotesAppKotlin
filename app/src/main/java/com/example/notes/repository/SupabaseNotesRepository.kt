@@ -25,6 +25,7 @@ class SupabaseNotesRepository @Inject constructor() {
                 set("note_description", note.description)
                 set("note_entry_date", note.date)
                 set("note_is_pined", note.isPinned)
+                set("note_color", note.colorIndex)
             }
         ) {
             filter {
